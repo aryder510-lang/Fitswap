@@ -87,7 +87,7 @@ footer{text-align:center;padding:25px;color:var(--muted);font-size:.85rem}
 <script>
 // CONFIG: use the project's public/publishable key only. Never put a service_role key in a browser.
 const SUPABASE_URL = "https://vqymyeybxnsmivvhmbsa.supabase.co/rest/v1/";
-const SUPABASE_ANON_KEY = "vqymyeybxnsmivvhmbsa";
+const SUPABASE_ANON_KEY = "sb_publishable_1N6kfe3vs9DkfwFC497BCw_-iRJOpUU";
 const configured = SUPABASE_URL.startsWith("https://") && !SUPABASE_URL.includes("YOUR_") && !SUPABASE_ANON_KEY.includes("YOUR_");
 const client = configured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 let user = null, mode = "signup", allListings = [];
