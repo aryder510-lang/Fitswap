@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FitSwap — UK fitness marketplace</title>
+<meta name="description" content="Buy and sell pre-loved fitness equipment and sports gear across the UK.">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--ink:#172b25;--green:#246b50;--mint:#eaf4ee;--paper:#f7f8f6;--muted:#66736c;--line:#e1e7e2;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:var(--ink);color:white;padding:16px max(18px,calc((100% - 1120px)/2));display:flex;align-items:center;justify-content:space-between;gap:16px}
+.logo{font-size:1.5rem;font-weight:900;letter-spacing:1.5px}.logo span{color:#9dd7b7}
+nav{display:flex;align-items:center;gap:12px;flex-wrap:wrap}nav a{color:white;text-decoration:none}
+button,.btn{border:0;border-radius:10px;background:var(--green);color:white;padding:11px 15px;font-weight:750;cursor:pointer;text-decoration:none;display:inline-block}
+button.secondary,.btn.secondary{background:white;color:var(--ink);border:1px solid var(--line)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.hero{background:linear-gradient(120deg,#172b25,#285d47);color:white;padding:46px 20px}.hero>div{max-width:1120px;margin:auto}
+.hero h1{font-size:clamp(2.2rem,5vw,3.8rem);line-height:1.05;margin:10px 0}.hero p{max-width:620px;color:#e1eee6}
+main{max-width:1120px;margin:30px auto;padding:0 18px}.eyebrow{color:var(--green);font-size:.78rem;font-weight:850;letter-spacing:1.3px;text-transform:uppercase}
+h2{margin:5px 0 12px;font-size:1.6rem}.muted,small{color:var(--muted)}
+.layout{display:grid;grid-template-columns:1.2fr .8fr;gap:20px;align-items:start}
+.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:20px}
+input,select,textarea{width:100%;font:inherit;border:1px solid var(--line);border-radius:9px;padding:11px;background:white;color:var(--ink)}
+.field{display:flex;flex-direction:column;gap:5px;margin:11px 0}label{font-weight:700;font-size:.9rem}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.card{background:white;border:1px solid var(--line);border-radius:13px;padding:15px;min-width:0}
+.card .emoji{font-size:2rem;background:var(--mint);border-radius:10px;padding:10px;text-align:center}
+.price{font-size:1.25rem;font-weight:900}.tag{font-size:.75rem;text-transform:uppercase;color:var(--green);font-weight:800}
+.toolbar{display:flex;gap:10px;margin:14px 0}.toolbar input{flex:1}
+.status{padding:3px 8px;border-radius:99px;background:#fff3d6;color:#745313;font-size:.75rem;font-weight:800}
+.notice{background:#fff7df;border:1px solid #f0dfa7;border-radius:10px;padding:12px;color:#66521b;font-size:.88rem;margin-top:12px}
+.success{background:#eaf4ee;border:1px solid #b8d9c3;color:#174b35;padding:10px;border-radius:9px;margin:10px 0}
+.error{background:#fff0ee;border:1px solid #f0c5be;color:#8a2e20;padding:10px;border-radius:9px;margin:10px 0}
+.hidden{display:none!important}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+footer{text-align:center;padding:25px;color:var(--muted);font-size:.85rem}
+@media(max-width:780px){.layout{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.grid{grid-template-columns:1fr}header{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+ <div class="logo">FIT<span>SWAP</span></div>
+ <nav><a href="#browse">Browse gear</a><a href="#account">Seller area</a><button id="signOut" class="secondary hidden">Sign out</button></nav>
+</header>
+<section class="hero"><div><div class="eyebrow" style="color:#a8ddbd">The UK fitness marketplace</div><h1>Your next workout starts here.</h1><p>Discover pre-loved gym equipment and sports gear, or create a seller account to list your own kit.</p><a class="btn" href="#browse">Browse listings</a></div></section>
+<main>
+ <div id="configWarning" class="notice hidden"><b>Setup needed:</b> Add your Supabase project URL and publishable anon key in the CONFIG section of this file, then run <code>schema.sql</code> in your Supabase SQL Editor.</div>
+ <div id="message" aria-live="polite"></div>
+ <section id="browse" class="panel">
+  <div class="eyebrow">Explore FitSwap</div><h2>Approved listings</h2>
+  <p class="muted">Listings are shared across devices. Only administrator-approved items appear here.</p>
+  <div class="toolbar"><input id="search" placeholder="Search equipment or town..." aria-label="Search listings"><select id="category"><option value="">All categories</option><option>Weights</option><option>Home gym</option><option>Sports</option><option>Cardio</option><option>Accessories</option></select></div>
+  <div id="listingGrid" class="grid"><p class="muted">Connect Supabase to load live listings.</p></div>
+ </section>
+ <div class="layout">
+  <section id="account" class="panel">
+   <div class="eyebrow">Seller access</div><h2 id="authHeading">Create a seller account</h2>
+   <p class="muted">Use an email address you can access. Email confirmation may be required.</p>
+   <form id="authForm">
+    <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="email" required></div>
+    <div class="field"><label for="password">Password</label><input id="password" type="password" minlength="8" autocomplete="new-password" required></div>
+    <div id="profileFields">
+     <div class="field"><label for="displayName">Public seller name</label><input id="displayName" maxlength="40" placeholder="e.g. Northside Fitness"></div>
+     <div class="field"><label for="town">Town or city (not full address)</label><input id="town" maxlength="50" placeholder="e.g. Leeds"></div>
+    </div>
+    <div class="actions"><button id="authSubmit" type="submit">Create account</button><button type="button" id="toggleAuth" class="secondary">I already have an account</button></div>
+   </form>
+   <div id="sellerState" class="hidden"><div class="success">You're signed in. You can now submit a listing.</div><p id="sellerEmail" class="muted"></p></div>
+  </section>
+  <section id="sell" class="panel">
+   <div class="eyebrow">Seller workspace</div><h2>Submit an item</h2><p class="muted">New listings are reviewed before appearing publicly.</p>
+   <form id="listingForm">
+    <div class="field"><label for="itemTitle">Item name</label><input id="itemTitle" maxlength="80" required placeholder="Adjustable dumbbell set"></div>
+    <div class="field"><label for="itemPrice">Price (£)</label><input id="itemPrice" type="number" min="0" max="100000" step=".01" required></div>
+    <div class="field"><label for="itemCategory">Category</label><select id="itemCategory"><option>Weights</option><option>Home gym</option><option>Sports</option><option>Cardio</option><option>Accessories</option></select></div>
+    <div class="field"><label for="itemCondition">Condition</label><select id="itemCondition"><option>Good</option><option>Like new</option><option>Well used</option><option>New</option></select></div>
+    <div class="field"><label for="itemTown">Town or city</label><input id="itemTown" maxlength="50" required placeholder="Town or city only"></div>
+    <div class="field"><label for="itemDescription">Description</label><textarea id="itemDescription" rows="3" maxlength="700" required></textarea></div>
+    <button type="submit" id="submitListing" disabled>Sign in to submit</button>
+   </form>
+   <div class="notice">Do not include your home address, phone number, payment details or other private information in a listing. Do not list recalled, damaged or unsafe equipment.</div>
+  </section>
+ </div>
+ <section class="panel"><div class="eyebrow">My seller listings</div><h2>Your submissions</h2><div id="myListings" class="muted">Sign in to see your submissions.</div></section>
+</main>
+<footer>FitSwap UK · Early-stage marketplace prototype. No payments or buyer–seller messaging are enabled.</footer>
+<script>
+// CONFIG: use the project's public/publishable key only. Never put a service_role key in a browser.
+const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY";
+const configured = SUPABASE_URL.startsWith("https://") && !SUPABASE_URL.includes("YOUR_") && !SUPABASE_ANON_KEY.includes("YOUR_");
+const client = configured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+let user = null, mode = "signup", allListings = [];
+const $ = id => document.getElementById(id);
+function message(text, kind="success"){ $("message").innerHTML = `<div class="${kind}">${escapeHtml(text)}</div>`; }
+function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function money(n){return new Intl.NumberFormat("en-GB",{style:"currency",currency:"GBP"}).format(Number(n));}
+function requireConfig(){if(!client){$("configWarning").classList.remove("hidden");return false;}return true;}
+function iconFor(c){return ({Weights:"🏋️","Home gym":"🪑",Sports:"⚽",Cardio:"🚴",Accessories:"💪"})[c]||"🏅";}
+async function loadListings(){
+ if(!requireConfig())return;
+ const {data,error}=await client.from("listings").select("id,title,description,price,category,condition,town,created_at").eq("status","approved").order("created_at",{ascending:false});
+ if(error){$("listingGrid").textContent="Could not load listings. Check the Supabase setup.";return;}
+ allListings=data||[];renderListings();
+}
+function renderListings(){
+ const q=$("search").value.toLowerCase(),cat=$("category").value;
+ const rows=allListings.filter(x=>(!cat||x.category===cat)&&[x.title,x.description,x.town,x.category].join(" ").toLowerCase().includes(q));
+ $("listingGrid").innerHTML=rows.length?rows.map(x=>`<article class="card"><div class="emoji">${iconFor(x.category)}</div><div class="tag">${escapeHtml(x.category)}</div><h3>${escapeHtml(x.title)}</h3><div class="price">${money(x.price)}</div><small>${escapeHtml(x.condition)} · ${escapeHtml(x.town)}</small><p>${escapeHtml(x.description)}</p></article>`).join(""):"<p class='muted'>No approved listings match yet. Check back soon.</p>";
+}
+async function refreshSession(){
+ if(!client)return;
+ const {data}=await client.auth.getSession(); user=data.session?.user||null; updateAuthUI(); if(user) await loadMyListings();
+}
+function updateAuthUI(){
+ $("signOut").classList.toggle("hidden",!user);$("sellerState").classList.toggle("hidden",!user);
+ $("authForm").classList.toggle("hidden",!!user);$("sellerEmail").textContent=user?.email||"";
+ $("submitListing").disabled=!user;$("submitListing").textContent=user?"Submit for review":"Sign in to submit";
+}
+$("toggleAuth").addEventListener("click",()=>{mode=mode==="signup"?"login":"signup";$("authHeading").textContent=mode==="signup"?"Create a seller account":"Seller sign in";$("authSubmit").textContent=mode==="signup"?"Create account":"Sign in";$("profileFields").classList.toggle("hidden",mode==="login");$("toggleAuth").textContent=mode==="signup"?"I already have an account":"Create a new account";});
+$("authForm").addEventListener("submit",async e=>{
+ e.preventDefault();if(!requireConfig())return;
+ const email=$("email").value.trim(),password=$("password").value;
+ if(mode==="signup"){
+  const {data,error}=await client.auth.signUp({email,password,options:{data:{display_name:$("displayName").value.trim(),town:$("town").value.trim()}}});
+  if(error){message(error.message,"error");return;}
+  if(data.session){user=data.user;updateAuthUI();message("Account created. You can now submit listings.");}
+  else message("Account created. Check your email for a confirmation link, then sign in.");
+ }else{
+  const {data,error}=await client.auth.signInWithPassword({email,password});
+  if(error){message(error.message,"error");return;}user=data.user;updateAuthUI();await loadMyListings();message("Signed in successfully.");
+ }
+});
+$("signOut").addEventListener("click",async()=>{if(!client)return;await client.auth.signOut();user=null;updateAuthUI();$("myListings").textContent="Sign in to see your submissions.";message("You have signed out.");});
+$("listingForm").addEventListener("submit",async e=>{
+ e.preventDefault();if(!requireConfig()||!user){message("Please sign in before submitting a listing.","error");return;}
+ const price=Number($("itemPrice").value);if(!Number.isFinite(price)||price<0){message("Enter a valid price.","error");return;}
+ const payload={seller_id:user.id,title:$("itemTitle").value.trim(),description:$("itemDescription").value.trim(),price,category:$("itemCategory").value,condition:$("itemCondition").value,town:$("itemTown").value.trim(),status:"pending"};
+ const {error}=await client.from("listings").insert(payload);
+ if(error){message(error.message,"error");return;}
+ e.target.reset();message("Listing submitted. It will appear publicly after administrator approval.");await loadMyListings();
+});
+async function loadMyListings(){
+ if(!client||!user)return;
+ const {data,error}=await client.from("listings").select("id,title,price,status,created_at").eq("seller_id",user.id).order("created_at",{ascending:false});
+ if(error){$("myListings").textContent="Could not load your listings.";return;}
+ $("myListings").innerHTML=data.length?data.map(x=>`<div class="card" style="margin:8px 0"><b>${escapeHtml(x.title)}</b> · ${money(x.price)} <span class="status">${escapeHtml(x.status)}</span></div>`).join(""):"You have not submitted any listings yet.";
+}
+$("search").addEventListener("input",renderListings);$("category").addEventListener("change",renderListings);
+if(client){client.auth.onAuthStateChange((_event,session)=>{user=session?.user||null;updateAuthUI();});}
+else $("configWarning").classList.remove("hidden");
+updateAuthUI();loadListings();refreshSession();
+</script>
+</body></html>
